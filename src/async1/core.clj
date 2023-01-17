@@ -1,48 +1,44 @@
 (ns async1.core
-  (:require [clojure.core.async
-             :as a
-             :refer [>! <! >!! <!! go chan buffer close! thread
-                     alts! alts!! timeout go-loop]]))
+  (:require [clojure.core.async :as a
+             :refer [chan >!! >! <! close! go-loop]]
+            [async1.modeler :as modeler]
+            [async1.lib :as lib]))
 
-;; ----- data modeler understands the requests
-(defn new-dm-request [from subj]
-  {:command :request
-   :args {"From:" from,
-          "Date:" (System/currentTimeMillis),
-          "Subject:" subj}})
+(defn say-to [modeler req]
+  (>!! modeler req))
 
-(defn shutdown []
-  {:command :shutdown})
-
-;; ------ how data modeler handles requests
-(defn bus-logic [{:keys [command args]}]
-  (case command
-    :shutdown :shutdown
-    :request (println "New request" args)
-    :else (println "Unsupported command " command)))
-
-;; ----------- channel logic is confined here -----------
-(defn say-to [data-modeler req]
-  (>!! data-modeler req))
-
-(defn new-data-modeler []
+(defn start-data-modeler
+  "Returns a new channel and spawns a background process to
+   listen on it. The requesters can communicate to the data modeler
+   by sending the requests (a map with keys :request, :args)
+   to the channel.
+   To stop the data modeler, send a request {:request :shutdown}"
+  [handler-fn]
   (let [in (chan)]
-    (println "Data modeler is open for business on channel " in)
-    (go-loop [req (<!! in)]
-      (let [resp (bus-logic req)]
-        (if (= resp :shutdown)
+    (println "Modeler is available on channel " in)
+    (go-loop []
+      (let [req (<! in)
+            resp (handler-fn req)]
+        (if-not resp
           (do
-            (println "Data modeler is going home, and closing the channel " in)
-            (close! in)
-            true)
-          (recur (<!! in)))))
+            (println "Modeler is going home, and closing the channel " in)
+            (close! in))
+          (recur))))
     in))
 
+
 (comment
-  (def tim (new-data-modeler))
-  (say-to tim (new-dm-request "Jason" "New table STG_CES1"))
-  (say-to tim (new-dm-request "Lisa" "New table STG_DM_1"))
-  (say-to tim (new-dm-request "Steven" "New table STG_ARCA_1"))
-  (say-to tim (new-dm-request "Caroline" "New table STG_MLR"))
-  (say-to tim (shutdown))
-  )
+  ; (def tim (start-data-modeler modeler/basic))
+  ; (def tim (start-data-modeler modeler/echo))
+  (def tim (start-data-modeler modeler/thorough))
+
+  (say-to tim (modeler/request-change {:from "Jason", :subject "New table STG_CES1", :release "Feb 2023"}))
+  (say-to tim (modeler/request-change {:from "Lisa", :subject "New table STG_DM_1", :release "May 2023"}))
+  (say-to tim {:request "I don't know what I want"})
+  (say-to tim (modeler/request-change {:from "Steven", :subject "New table STG_ARCA_1"}))
+  (say-to tim (modeler/request-change {:from "Caroline", :subject "New table STG_MLR"}))
+  (say-to tim (modeler/request-shutdown))
+)
+
+(defn -main [] )
+
