@@ -15,7 +15,7 @@
 (defn basic
   "Takes map with at least one key :request, performs actions,
    and returns true, if the can continue handling requests after this one."
-  [{:keys [request] :as mp}]
+  [{:keys [request]}]
   (case request
     :shutdown
     false
