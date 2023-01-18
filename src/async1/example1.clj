@@ -1,4 +1,5 @@
 (ns async1.example1
+  #_{:clj-kondo/ignore [:unused-referred-var]}
   (:require [clojure.core.async
              :as a
              :refer [>! <! >!! <!! go chan buffer close! thread

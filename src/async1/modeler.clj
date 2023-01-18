@@ -41,17 +41,18 @@
       (println "Unsupported request " request)
       true)))
 
+(def request_cnt (atom 0))
+
 (defn thorough
-  [{:keys [request release] :as mp}]
+  [{:keys [request from date release subject]}]
+  (swap! request_cnt inc)
+
   (case request
     :shutdown
     false
 
     :change
-    (do (println
-         (if release
-           "Thank you for providing the release info."
-           "Please provide the release info"))
+    (do (println from date release subject)
         true)
 
     (do
