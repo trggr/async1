@@ -43,19 +43,16 @@
 
 (def request_cnt (atom 0))
 
-(defn thorough
-  [{:keys [request from date release subject]}]
-  (swap! request_cnt inc)
+(defmulti thorough (fn [x]
+                     (swap! request_cnt inc)
+                     (:request x)))
 
-  (case request
-    :shutdown
-    false
-
-    :change
-    (do (println from date release subject)
-        true)
-
-    (do
-      (println "Unsupported request " request)
-      true)))
+(defmethod thorough :shutdown [_]
+  false)
+(defmethod thorough :change   [{:keys [from date release subject]}]
+  (println from date release subject)
+  true)
+(defmethod thorough :default [param]
+  (println "Unsupported request " (:request param))
+  true)
 
